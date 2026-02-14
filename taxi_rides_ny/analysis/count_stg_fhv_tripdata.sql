@@ -1,0 +1,1 @@
+Select count (*) from {{ ref('stg_fhv_tripdata') }};

@@ -1,5 +1,8 @@
+config-version: 2
 name: 'taxi_rides_ny'
 version: '1.0.0'
+dbt-cloud:
+    project-id: 70471823552653
 
 # Require a specific dbt version for reproducibility
 require-dbt-version: [">=1.7.0", "<2.0.0"]
@@ -7,9 +10,11 @@ require-dbt-version: [">=1.7.0", "<2.0.0"]
 # This setting configures which "profile" dbt uses for this project.
 profile: 'taxi_rides_ny'
 
+# Replace 'please-add-your-gcp-project-id-here' with your actual GCP project ID in your profiles.yml
+
 # These configurations specify where dbt should look for different types of files.
 model-paths: ["models"]
-analysis-paths: ["analyses"]
+analysis-paths: ["analysis"]
 test-paths: ["tests"]
 seed-paths: ["seeds"]
 macro-paths: ["macros"]
