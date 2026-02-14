@@ -110,3 +110,4 @@ google-*.json
 .env.*.local
 *.env
 
+dbt-bigquery.json
