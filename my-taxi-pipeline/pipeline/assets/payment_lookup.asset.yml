@@ -1,0 +1,18 @@
+name: ingestion.payment_lookup
+
+type: duckdb.seed
+
+parameters:
+  path: payment_lookup.csv
+
+columns:
+  - name: payment_type_id
+    type: integer
+    primary_key: true
+    checks:
+      - name: not_null
+      - name: unique
+  - name: payment_type_name
+    type: string
+    checks:
+      - name: not_null

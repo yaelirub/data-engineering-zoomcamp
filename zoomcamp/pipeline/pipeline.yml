@@ -1,0 +1,29 @@
+# Zoomcamp template: pipeline.yml
+# Goal: help you learn Bruin pipeline configuration patterns. This file is intentionally *not* runnable until you complete the TODOs.
+#
+# Key docs:
+# - Pipeline files: https://getbruin.com/docs/bruin/getting-started/pipeline
+# - Variables (JSON Schema): https://getbruin.com/docs/bruin/getting-started/pipeline-variables
+# - Run command: https://getbruin.com/docs/bruin/commands/run
+
+name: nyc-taxi
+
+schedule: monthly
+
+# The earliest date this pipeline should consider for full refresh backfills.
+start_date: "2019-01-01"
+
+# Default connections so assets can omit explicit `connection: ...`.
+default_connections:
+  duckdb: default-bigquery
+
+# Pipeline variables using JSON Schema and defaults.
+# - Variables must have a `default` so assets can render without `--var`.
+# - In SQL/YAML assets: reference as `{{ var.my_variable }}`.
+# - In Python assets: read JSON from env var `BRUIN_VARS`.
+variables:
+  taxi_types:
+    type: array
+    items:
+      type: string
+    default: ["yellow"]

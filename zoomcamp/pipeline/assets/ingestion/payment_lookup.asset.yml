@@ -1,0 +1,26 @@
+# Seed Asset: Load a local CSV file as a lookup table
+#
+# Docs: https://getbruin.com/docs/bruin/assets/seed
+
+name: ingestion.payment_lookup
+
+# type: duckdb.seed
+type: bigquery.seed
+
+# Path to the CSV file (relative to this .asset.yml file).
+parameters:
+  path: payment_lookup.csv
+
+columns:
+  - name: payment_type_id
+    type: integer
+    description: Numeric payment type identifier from TLC data
+    primary_key: true
+    checks:
+      - name: not_null
+      - name: unique
+  - name: payment_type_name
+    type: string
+    description: Human-readable payment method name
+    checks:
+      - name: not_null

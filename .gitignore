@@ -6,6 +6,7 @@
 **.terraform
 **.terraform.lock.*
 **google_credentials.json
+**zoomcamp-bruin.json
 **logs/
 **.env
 **__pycache__/
@@ -16,3 +17,15 @@ serving_dir
 !week_6_stream_processing/avro_example/data/rides.csv
 *.parquet
 *.csv
+!**/payment_lookup.csv
+
+.bruin.yml
+logs/runs
+logs/*.log
+__pycache__/
+*.py[cod]
+logs/queries
+
+duckdb.db
+.python-version
+.vscode/
