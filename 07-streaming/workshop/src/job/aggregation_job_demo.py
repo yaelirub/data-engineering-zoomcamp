@@ -19,13 +19,13 @@ def create_events_source_kafka(t_env):
             DOLocationID INTEGER,
             trip_distance DOUBLE,
             total_amount DOUBLE,
-            tpep_pickup_datetime BIGINT,
-            event_timestamp AS TO_TIMESTAMP_LTZ(tpep_pickup_datetime, 3),
-            WATERMARK for event_timestamp as event_timestamp - INTERVAL '5' SECOND
+            lpep_pickup_datetime VARCHAR,
+            event_timestamp AS TO_TIMESTAMP(lpep_pickup_datetime, 'yyyy-MM-dd HH:mm:ss'),
+            WATERMARK FOR event_timestamp AS event_timestamp - INTERVAL '5' SECOND
         ) WITH (
             'connector' = 'kafka',
             'properties.bootstrap.servers' = 'redpanda:29092',
-            'topic' = 'rides',
+            'topic' = 'green-trips',
             'scan.startup.mode' = 'latest-offset',
             'properties.auto.offset.reset' = 'latest',
             'format' = 'json'

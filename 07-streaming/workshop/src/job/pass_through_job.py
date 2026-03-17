@@ -32,13 +32,15 @@ def create_events_source_kafka(t_env):
             DOLocationID INTEGER,
             trip_distance DOUBLE,
             total_amount DOUBLE,
-            tpep_pickup_datetime BIGINT
+            lpep_pickup_datetime VARCHAR,
+            event_timestamp AS TO_TIMESTAMP(lpep_pickup_datetime, 'yyyy-MM-dd HH:mm:ss'),
+            WATERMARK FOR event_timestamp AS event_timestamp - INTERVAL '5' SECOND
         ) WITH (
             'connector' = 'kafka',
             'properties.bootstrap.servers' = 'redpanda:29092',
-            'topic' = 'rides',
-            'scan.startup.mode' = 'latest-offset',
-            'properties.auto.offset.reset' = 'latest',
+            'topic' = 'green-trips',
+            'scan.startup.mode' = 'earliest-offset',
+            'properties.auto.offset.reset' = 'earliest',
             'format' = 'json'
         );
         """
@@ -49,6 +51,7 @@ def log_processing():
     # Set up the execution environment
     env = StreamExecutionEnvironment.get_execution_environment()
     env.enable_checkpointing(10 * 1000)
+    env.set_parallelism(1)
 
     # Set up the table environment
     settings = EnvironmentSettings.new_instance().in_streaming_mode().build()
@@ -66,7 +69,7 @@ def log_processing():
                         DOLocationID,
                         trip_distance,
                         total_amount,
-                        TO_TIMESTAMP_LTZ(tpep_pickup_datetime, 3) as pickup_datetime
+                        event_timestamp as pickup_datetime
                     FROM {source_table}
                     """
         ).wait()

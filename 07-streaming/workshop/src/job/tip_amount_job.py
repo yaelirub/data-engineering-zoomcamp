@@ -2,14 +2,14 @@ from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.table import EnvironmentSettings, StreamTableEnvironment
 
 
-def create_events_aggregated_sink(t_env):
-    table_name = 'green_trips_5min'
+def create_tip_sink_postgres(t_env):
+    table_name = 'green_trips_tip_hourly'
     sink_ddl = f"""
         CREATE TABLE {table_name} (
             window_start TIMESTAMP(3),
-            PULocationID INT,
-            num_trips BIGINT,
-            PRIMARY KEY (window_start, PULocationID) NOT ENFORCED
+            window_end TIMESTAMP(3),
+            total_tip DOUBLE,
+            PRIMARY KEY (window_start) NOT ENFORCED
         ) WITH (
             'connector' = 'jdbc',
             'url' = 'jdbc:postgresql://postgres:5432/postgres',
@@ -22,13 +22,15 @@ def create_events_aggregated_sink(t_env):
     t_env.execute_sql(sink_ddl)
     return table_name
 
+
 def create_events_source_kafka(t_env):
-    table_name = "events"
+    table_name = 'events'
     source_ddl = f"""
         CREATE TABLE {table_name} (
             PULocationID INTEGER,
             DOLocationID INTEGER,
             trip_distance DOUBLE,
+            tip_amount DOUBLE,
             total_amount DOUBLE,
             lpep_pickup_datetime VARCHAR,
             event_timestamp AS TO_TIMESTAMP(lpep_pickup_datetime, 'yyyy-MM-dd HH:mm:ss'),
@@ -46,37 +48,37 @@ def create_events_source_kafka(t_env):
     return table_name
 
 
-def log_aggregation():
-    # Set up the execution environment
+def run_tip_amount_job():
     env = StreamExecutionEnvironment.get_execution_environment()
-    env.enable_checkpointing(10 * 1000)
     env.set_parallelism(1)
 
-    # Set up the table environment
     settings = EnvironmentSettings.new_instance().in_streaming_mode().build()
     t_env = StreamTableEnvironment.create(env, environment_settings=settings)
 
+    t_env.get_config().set("state.checkpoint-storage", "filesystem")
+    t_env.get_config().set("state.checkpoints.dir", "file:///tmp/flink-checkpoints")
+
     try:
-        # Create Kafka table
         source_table = create_events_source_kafka(t_env)
-        aggregated_table = create_events_aggregated_sink(t_env)
+        sink_table = create_tip_sink_postgres(t_env)
 
-        t_env.execute_sql(f"""
-        INSERT INTO {aggregated_table}
-        SELECT
-            window_start,
-            PULocationID,
-            COUNT(*) AS num_trips
-        FROM TABLE(
-            TUMBLE(TABLE {source_table}, DESCRIPTOR(event_timestamp), INTERVAL '5' MINUTE)
-        )
-        GROUP BY window_start, PULocationID;
-
-        """).wait()
+        t_env.execute_sql(
+            f"""
+            INSERT INTO {sink_table}
+            SELECT
+                window_start,
+                window_end,
+                SUM(tip_amount) AS total_tip
+            FROM TABLE(
+                TUMBLE(TABLE {source_table}, DESCRIPTOR(event_timestamp), INTERVAL '1' HOUR)
+            )
+            GROUP BY window_start, window_end
+            """
+        ).wait()
 
     except Exception as e:
-        print("Writing records from Kafka to JDBC failed:", str(e))
+        print('Tip amount job failed:', str(e))
 
 
 if __name__ == '__main__':
-    log_aggregation()
+    run_tip_amount_job()

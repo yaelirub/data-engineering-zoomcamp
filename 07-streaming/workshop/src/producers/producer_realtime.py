@@ -1,15 +1,13 @@
-import dataclasses
 import json
 import random
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from kafka import KafkaProducer
-from models import Ride
 
 # Top pickup locations from the actual NYC yellow taxi data.
 # PULocationID is a taxi zone ID (1-263) defined by the NYC TLC.
@@ -41,18 +39,19 @@ DROPOFF_LOCATIONS = PICKUP_LOCATIONS  # same pool for simplicity
 
 
 def make_ride(delay_seconds=0):
-    now_ms = int(time.time() * 1000) - delay_seconds * 1000
-    return Ride(
-        PULocationID=random.choice(PICKUP_LOCATIONS),
-        DOLocationID=random.choice(DROPOFF_LOCATIONS),
-        trip_distance=round(random.uniform(0.5, 20.0), 2),
-        total_amount=round(random.uniform(5.0, 100.0), 2),
-        tpep_pickup_datetime=now_ms,
-    )
+    event_dt = datetime.now(timezone.utc) - timedelta(seconds=delay_seconds)
+    return {
+        'PULocationID': random.choice(PICKUP_LOCATIONS),
+        'DOLocationID': random.choice(DROPOFF_LOCATIONS),
+        'trip_distance': round(random.uniform(0.5, 20.0), 2),
+        'total_amount': round(random.uniform(5.0, 100.0), 2),
+        # Flink homework expects string timestamps, not epoch milliseconds.
+        'lpep_pickup_datetime': event_dt.strftime('%Y-%m-%d %H:%M:%S'),
+    }
 
 
 def ride_serializer(ride):
-    return json.dumps(dataclasses.asdict(ride)).encode('utf-8')
+    return json.dumps(ride).encode('utf-8')
 
 
 server = 'localhost:9092'
@@ -61,7 +60,7 @@ producer = KafkaProducer(
     value_serializer=ride_serializer,
 )
 
-topic_name = 'rides'
+topic_name = 'green-trips'
 count = 0
 
 print("Sending events (Ctrl+C to stop)...")
@@ -73,12 +72,12 @@ try:
         if random.random() < 0.2:
             delay = random.randint(3, 10)
             ride = make_ride(delay_seconds=delay)
-            ts = datetime.fromtimestamp(ride.tpep_pickup_datetime / 1000, tz=timezone.utc)
-            print(f"  LATE ({delay}s) -> PU={ride.PULocationID} ts={ts:%H:%M:%S}")
+            ts = ride['lpep_pickup_datetime']
+            print(f"  LATE ({delay}s) -> PU={ride['PULocationID']} ts={ts}")
         else:
             ride = make_ride()
-            ts = datetime.fromtimestamp(ride.tpep_pickup_datetime / 1000, tz=timezone.utc)
-            print(f"  on time   -> PU={ride.PULocationID} ts={ts:%H:%M:%S}")
+            ts = ride['lpep_pickup_datetime']
+            print(f"  on time   -> PU={ride['PULocationID']} ts={ts}")
 
         producer.send(topic_name, value=ride)
         count += 1
